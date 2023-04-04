@@ -1,9 +1,9 @@
-from datetime import date
+from datetime import datetime
 from collections import UserDict
 
 
 class Field:
-    def __init__(self, value=None):
+    def __init__(self, value):
         self.value = value
     def __str__(self):
         return str(self.value)
@@ -20,15 +20,29 @@ class Mail(Field):
     pass
 
 class Birthday(Field):
-    def days_to_birthday(self):
-        today = date.today()
-        if self.value:
-            birthday = self.value.replace(year=today.year)
-            if birthday < today:
-                birthday = birthday.replace(year=today.year + 1)
-            delta = birthday - today
-            return delta.days
-        return None
+    def __init__(self, value):
+        self.__value = None
+        self.value = value
+    
+    @property
+    def value(self):
+        return self.__value.strftime('%d-%m-%Y')
+    
+    @value.setter
+    def value(self, value):
+        try:
+            self.__value = datetime.strptime(value, '%d-%m-%Y')
+        except ValueError:
+            raise ValueError("Birthdate must be in 'dd-mm-yyyy' format")
+    # def days_to_birthday(self):
+    #     today = date.today()
+    #     if self.value:
+    #         birthday = self.value.replace(year=today.year)
+    #         if birthday < today:
+    #             birthday = birthday.replace(year=today.year + 1)
+    #         delta = birthday - today
+    #         return delta.days
+    #     return None
 
 
 class Record:
@@ -50,13 +64,12 @@ class Record:
     def set_mail(self, mail):
         self.mail = mail
     
-    def edit_mail(self, mail):
-        self.mail = mail
+    # def edit_mail(self, mail):
+    #     self.mail = mail
 
     def get_mail(self):
         return self.mail.value if self.mail else None
     
-
     def set_birthday(self, birthday):
         self.birthday = birthday
 
@@ -64,17 +77,16 @@ class Record:
         return self.birthday.value if self.birthday else None
 
     def days_to_birthday(self):
-        
+    
         if self.birthday:
-            birthday = self.birthday.value
+            bd = self.birthday
             today = datetime.date.today()
-            current_year_birthday = datetime.date(today.year, birthday.month, birthday.day)
+            current_year_birthday = datetime.date(today.year, bd.month, bd.day)
             if current_year_birthday < today:
-                current_year_birthday = datetime.date(today.year + 1, birthday.month, birthday.day)
+                current_year_birthday = datetime.date(today.year + 1, bd.month, bd.day)
             delta = current_year_birthday - today
             return delta.days
-        else:
-            return None
+        return None
 
 
 class AddressBook(UserDict):
@@ -117,7 +129,7 @@ def add_contact(name, phone, mail=None, birthday=None):
     name_field = Name(name)
     phone_field = Phone(phone)
     mail_field = Mail(mail) if mail else None
-    birthday_field = Birthday(date.fromisoformat(birthday)) if birthday else None
+    birthday_field = Birthday(birthday) if birthday else None
     rec:Record = address_book.get(name_field.value)
     
     if rec:
@@ -151,12 +163,12 @@ def days_to_birthday(name):
         print("No record found for " + name)
 
 
-class Record:
-    def init(self, name, phone=None, mail=None, birthday=None):
-        self.name = name
-        self.phones = [phone] if phone else []
-        self.mail = mail
-        self.birthday = birthday 
+# class Record:
+#     def __init__(self, name, phone=None, mail=None, birthday=None):
+#         self.name = name
+#         self.phones = [phone] if phone else []
+#         self.mail = mail
+#         self.birthday = birthday 
 
 @input_error
 def find_contact(name):
@@ -165,7 +177,7 @@ def find_contact(name):
     if found_records:
         for record in found_records:
             email = record.get_mail()
-            if email != None:
+            if not email:
                 email_str = f", {email}"
             else:
                 email_str = ""
@@ -201,7 +213,7 @@ def show_all_contacts():
         for name in address_book.data:
             record = address_book.data[name]
             email = record.get_mail()
-            if email != None:
+            if not email:
                 email_str = f", {email}"
             else:
                 email_str = " *******"
@@ -213,13 +225,13 @@ def parse_command(command):
     if parts[0] == "hello":
         hello()
     elif parts[0] == "add":
-        if len(parts) < 4:
+        if len(parts) <= 4:
             try:
                 raise IndexError
             except IndexError:
                 print ("Command to add contact is empty, please repeat with name and number")
         else:
-            add_contact(parts[1], parts[2], parts[3])
+            add_contact(parts[1], parts[2], parts[3], parts[4])
     elif parts[0] == "find":
         if len(parts) < 2:
             raise IndexError
