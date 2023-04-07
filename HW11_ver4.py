@@ -25,7 +25,7 @@ class Birthday(Field):
     
     @property
     def value(self):
-        return self.__value.strftime('%d-%m-%Y')
+        return self.__value
     
     @value.setter
     def value(self, value):
@@ -33,6 +33,9 @@ class Birthday(Field):
             self.__value = datetime.strptime(value, '%d-%m-%Y')
         except ValueError:
             raise ValueError("Birthdate must be in 'dd-mm-yyyy' format")
+    
+    def __str__(self):
+        return self.__value.strftime('%d-%m-%Y')
 
 class Record:
     def __init__(self, name, phone=None, mail=None, birthday=None):
@@ -65,14 +68,14 @@ class Record:
     def days_to_birthday(self):
     
         if self.birthday:
-            bd = self.birthday
-            today = datetime.date.today()
-            current_year_birthday = datetime.date(today.year, bd.month, bd.day)
+            bd = self.birthday.value
+            today = datetime.today().date()
+            current_year_birthday = datetime(today.year, bd.month, bd.day).date()
             if current_year_birthday < today:
-                current_year_birthday = datetime.date(today.year + 1, bd.month, bd.day)
+                current_year_birthday = datetime(today.year + 1, bd.month, bd.day).date()
             delta = current_year_birthday - today
             return delta.days
-        return None
+        return "The contact does not have a birthday"
 
 class AddressBook(UserDict):
     def add_record(self, record):
@@ -98,7 +101,7 @@ def input_error(func):
         try:
             return func(*args, **kwargs)
         except KeyError:
-            print("Name not found in contacts")
+            return "Name not found in contacts"
     return inner
 
 def hello():
@@ -126,25 +129,26 @@ def add_contact(name, phone, mail=None, birthday=None):
             rec.birthday = birthday_field
             
     else:
-        rec = Record(name_field, phone_field, mail_field)
+        rec = Record(name_field, phone_field, mail_field, birthday_field)
         address_book.add_record(rec)
-        print(f"Contact {name} with phone number {phone} added successfully")
+        return f"Contact {name} with phone number {phone} added successfully"
     return address_book
 
 @input_error
 def days_to_birthday(name):
     name_field = Name(name)
     rec:Record = address_book.get(name_field.value)
-    if rec and rec.get_birthday():
-        birthday = rec.get_birthday()
-        today = datetime.date.today()
-        current_year_birthday = datetime.date(today.year, birthday.month, birthday.day)
-        if current_year_birthday < today:
-            current_year_birthday = datetime.date(today.year + 1, birthday.month, birthday.day)
-        delta = current_year_birthday - today
-        return delta.days
+    if rec:
+        return rec.days_to_birthday()
+        # birthday = rec.get_birthday()
+        # today = datetime.date.today()
+        # current_year_birthday = datetime.date(today.year, birthday.month, birthday.day)
+        # if current_year_birthday < today:
+        #     current_year_birthday = datetime.date(today.year + 1, birthday.month, birthday.day)
+        # delta = current_year_birthday - today
+        # return delta.days
     else:
-        print("No record found for " + name)
+        return f"No record found with name {name}"
 
 # class Record:
 #     def __init__(self, name, phone=None, mail=None, birthday=None):
@@ -170,9 +174,9 @@ def find_contact(name):
                 birthday_str = f", {birthday}"
             else:
                 birthday_str = ""    
-        print(f"{record.name.value}: {', '.join(str(phone) for phone in record.phones)}{email_str} {birthday_str}")
+        return f"{record.name.value}: {', '.join(str(phone) for phone in record.phones)}{email_str} {birthday_str}"
     else:
-        print(f"No records found for {name}")
+        return f"No records found for {name}"
 
 @input_error
 def update_contact(name, phone, mail=None):
@@ -183,13 +187,13 @@ def update_contact(name, phone, mail=None):
         if mail:
             mail_field = Mail(mail)
             record.set_mail(mail_field)
-        print(f"Updated phone number and email for {name} to {phone} and {mail}")
+        return f"Updated phone number and email for {name} to {phone} and {mail}"
     else:
         phone_field = Phone(phone)
         mail_field = Mail(mail) if mail else None
         record = Record(name_field, phone_field, mail_field)
         address_book.add_record(record)
-        print(f"Added {name} with phone number {phone} and email {mail}")
+        return f"Added {name} with phone number {phone} and email {mail}"
     return address_book
 
 @input_error
@@ -201,14 +205,14 @@ def show_all_contacts():
         for name in address_book.data:
             record = address_book.data[name]
             email = record.get_mail()
-            if email != None:
+            if not email:
                 email_str = f", {email}"
             else:
                 email_str = " *******"
         for name in address_book.data:
             record = address_book.data[name]
             birthday = record.get_birthday()
-            if birthday != None:
+            if not birthday:
                 birthday_str = f", {birthday}"
             else:
                 birthday_str = "#########"
@@ -226,33 +230,33 @@ def parse_command(command):
             try:
                 raise IndexError
             except IndexError:
-                print ("Command to add contact is empty, please repeat with name and number")
+                return "Command to add contact is empty, please repeat with name and number"
         else:
-            add_contact(parts[1], parts[2], parts[3], parts[4])
+           return add_contact(parts[1], parts[2], parts[3], parts[4])
     elif parts[0] == "find":
         if len(parts) < 2:
             raise IndexError
-        find_contact(parts[1])
+        return find_contact(parts[1])
     
     elif parts[0] == "update":
         if len(parts) < 4:
             raise IndexError
-        update_contact(parts[1], parts[2])
+        return update_contact(parts[1], parts[2])
     
     elif parts[0] == "show":
         if len(parts)<1:
             raise IndexError
-        show_all_contacts()
+        return show_all_contacts()
         
     elif parts[0] == "dtb":
         
         if len(parts)<1:
             raise IndexError
-        days_to_birthday()
+        return days_to_birthday(parts[1])
         #days_to_birthday(input(name=">>>>")) - может как-то так можно передать в ф-цю имя по дате рождения которого нужен анализ?
         
     else:
-        print("Invalid command")
+        return "Invalid command"
 
 
 def main():
@@ -262,7 +266,7 @@ def main():
             print("The program is finished")
             break
         else:
-            parse_command(command)
+            print(parse_command(command))
 
             
 if __name__ == '__main__':
